@@ -1,3 +1,5 @@
+# Import Libraries
+
 import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -5,14 +7,16 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
-# Load your dataset
+# Load Dataset
+
 @st.cache
 def load_data():
     return pd.read_csv('Airbnb_Open_Data.csv')
 
 df = load_data()
 
-# Preprocess your data
+# Preprocess Data
+
 def preprocess_data(df):
     # Fill missing values
     df['NAME'] = df['NAME'].fillna('')
@@ -31,7 +35,8 @@ def preprocess_data(df):
 
 df = preprocess_data(df)
 
-# Correct spelling using fuzzy matching
+# Correct Spelling
+
 def correct_spelling(value, correct_values):
     if isinstance(value, str) and value.strip():
         best_match = process.extractOne(value, correct_values)
@@ -41,7 +46,8 @@ def correct_spelling(value, correct_values):
 correct_values = ['Brooklyn', 'Manhattan', 'Queens', 'Staten Island', 'Bronx']
 df['neighbourhood group'] = df['neighbourhood group'].apply(lambda x: correct_spelling(x, correct_values))
 
-# Train TF-IDF and SVD models
+# Train Model
+
 @st.cache
 def train_models(df):
     tfidf = TfidfVectorizer(stop_words='english')
@@ -53,7 +59,8 @@ def train_models(df):
 
 tfidf_matrix, svd = train_models(df)
 
-# Recommendation function
+# Hybrid Recommendation Function
+
 def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5):
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
     latent_features = svd_model.transform(tfidf_matrix[listing_id])
@@ -64,12 +71,15 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     recommended = df.iloc[sorted_indices[1:top_n + 1]]
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
-# Streamlit app layout
+# Streamlit App Layout
+
 st.title("Airbnb Hybrid Recommendation System")
 
 # User input
 selected_neighbourhood = st.selectbox("Select a Neighbourhood Group", df['neighbourhood group'].unique())
 selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique())
+
+# Filter And Recommendation
 
 # Filter and recommend
 filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
