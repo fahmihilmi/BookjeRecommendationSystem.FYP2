@@ -1,5 +1,3 @@
-pip install streamlit
-
 import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -91,5 +89,3 @@ if st.button("Recommend Listings"):
         )
         st.write("Recommended Listings:")
         st.table(recommended)
-
-streamlit run app.py
