@@ -2,23 +2,29 @@
 import pandas as pd
 import streamlit as st
 import zipfile
-import io
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
 # Load Dataset from a Zipped File
-@st.cache
+@st.cache_data
 def load_data_from_zip(zip_path, filename):
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        with z.open(filename) as file:
-            return pd.read_csv(file)
+    try:
+        with zipfile.ZipFile(zip_path, 'r') as z:
+            with z.open(filename) as file:
+                return pd.read_csv(file)
+    except FileNotFoundError:
+        st.error(f"File '{zip_path}' or '{filename}' not found. Ensure the correct path is specified.")
+        return None
 
 # Update the zip file path and dataset filename
-ZIP_FILE_PATH = 'Airbnb_Open_Data.zip'
+ZIP_FILE_PATH = 'Airbnb_Open_Data.zip'  # Adjust the path as needed
 DATASET_FILENAME = 'Airbnb_Open_Data.csv'
+
 df = load_data_from_zip(ZIP_FILE_PATH, DATASET_FILENAME)
+if df is None:
+    st.stop()  # Stop the app if the data cannot be loaded
 
 # Preprocess Data
 def preprocess_data(df):
@@ -50,7 +56,7 @@ correct_values = ['Brooklyn', 'Manhattan', 'Queens', 'Staten Island', 'Bronx']
 df['neighbourhood group'] = df['neighbourhood group'].apply(lambda x: correct_spelling(x, correct_values))
 
 # Train Model
-@st.cache
+@st.cache_data
 def train_models(df):
     tfidf = TfidfVectorizer(stop_words='english')
     tfidf_matrix = tfidf.fit_transform(df['combined_features'])
