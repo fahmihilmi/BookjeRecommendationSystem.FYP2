@@ -1,22 +1,26 @@
 # Import Libraries
-
 import pandas as pd
 import streamlit as st
+import zipfile
+import io
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
-# Load Dataset
-
+# Load Dataset from a Zipped File
 @st.cache
-def load_data():
-    return pd.read_csv('Airbnb_Open_Data.csv')
+def load_data_from_zip(zip_path, filename):
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        with z.open(filename) as file:
+            return pd.read_csv(file)
 
-df = load_data()
+# Update the zip file path and dataset filename
+ZIP_FILE_PATH = 'Airbnb_Open_Data.zip'
+DATASET_FILENAME = 'Airbnb_Open_Data.csv'
+df = load_data_from_zip(ZIP_FILE_PATH, DATASET_FILENAME)
 
 # Preprocess Data
-
 def preprocess_data(df):
     # Fill missing values
     df['NAME'] = df['NAME'].fillna('')
@@ -36,7 +40,6 @@ def preprocess_data(df):
 df = preprocess_data(df)
 
 # Correct Spelling
-
 def correct_spelling(value, correct_values):
     if isinstance(value, str) and value.strip():
         best_match = process.extractOne(value, correct_values)
@@ -47,7 +50,6 @@ correct_values = ['Brooklyn', 'Manhattan', 'Queens', 'Staten Island', 'Bronx']
 df['neighbourhood group'] = df['neighbourhood group'].apply(lambda x: correct_spelling(x, correct_values))
 
 # Train Model
-
 @st.cache
 def train_models(df):
     tfidf = TfidfVectorizer(stop_words='english')
@@ -60,7 +62,6 @@ def train_models(df):
 tfidf_matrix, svd = train_models(df)
 
 # Hybrid Recommendation Function
-
 def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5):
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
     latent_features = svd_model.transform(tfidf_matrix[listing_id])
@@ -72,16 +73,13 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
 # Streamlit App Layout
-
 st.title("Airbnb Hybrid Recommendation System")
 
-# User input
+# User Input
 selected_neighbourhood = st.selectbox("Select a Neighbourhood Group", df['neighbourhood group'].unique())
 selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique())
 
-# Filter And Recommendation
-
-# Filter and recommend
+# Filter and Recommend
 filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
 
 if st.button("Recommend Listings"):
