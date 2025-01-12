@@ -1,28 +1,24 @@
-# Import Libraries
 import pandas as pd
 import streamlit as st
-import zipfile
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
-# Load Dataset from a Zipped File
+# Load Dataset from GitHub
 @st.cache_data
-def load_data_from_zip(zip_path, filename):
+def load_data_from_github(file_url):
     try:
-        with zipfile.ZipFile(zip_path, 'r') as z:
-            with z.open(filename) as file:
-                return pd.read_csv(file)
-    except FileNotFoundError:
-        st.error(f"File '{zip_path}' or '{filename}' not found. Ensure the correct path is specified.")
+        # Read the CSV file directly from the GitHub raw URL
+        return pd.read_csv(file_url)
+    except Exception as e:
+        st.error(f"Error loading the dataset: {e}")
         return None
 
-# Update the zip file path and dataset filename
-ZIP_FILE_PATH = 'Airbnb_Open_Data.zip'  # Adjust the path as needed
-DATASET_FILENAME = 'Airbnb_Open_Data.csv'
+# GitHub raw URL for Minimized_Airbnb_Data.csv
+GITHUB_RAW_URL = 'https://raw.githubusercontent.com/<username>/<repository_name>/main/Minimized_Airbnb_Data.csv'  # Replace with actual URL
 
-df = load_data_from_zip(ZIP_FILE_PATH, DATASET_FILENAME)
+df = load_data_from_github(GITHUB_RAW_URL)
 if df is None:
     st.stop()  # Stop the app if the data cannot be loaded
 
