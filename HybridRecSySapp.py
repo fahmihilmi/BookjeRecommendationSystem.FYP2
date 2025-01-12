@@ -15,8 +15,8 @@ def load_data_from_github(file_url):
         st.error(f"Error loading the dataset: {e}")
         return None
 
-# GitHub raw URL for Minimized_Airbnb_Data.csv
-GITHUB_RAW_URL = 'https://raw.githubusercontent.com/<username>/<repository_name>/main/Minimized_Airbnb_Data.csv'  # Replace with actual URL
+# Correct GitHub raw URL for Minimized_Airbnb_Data.csv
+GITHUB_RAW_URL = 'https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv'  # Corrected URL
 
 df = load_data_from_github(GITHUB_RAW_URL)
 if df is None:
