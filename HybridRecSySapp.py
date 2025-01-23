@@ -69,38 +69,50 @@ def train_models(df):
 tfidf_matrix, svd, svd_matrix = train_models(df)
 
 # Recommendation Function
-def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
-    content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
-    collaborative_sim = cosine_similarity(svd_matrix[listing_id].reshape(1, -1), svd_matrix).flatten()
+def recommend_hybrid(input_text, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
+    # Match the user's input to the closest listing in the dataset
+    matched_index = process.extractOne(input_text, df['combined_features'])[2]
+
+    # Content-based similarity
+    content_sim = cosine_similarity(tfidf_matrix[matched_index], tfidf_matrix).flatten()
+    
+    # Collaborative similarity
+    collaborative_sim = cosine_similarity(svd_matrix[matched_index].reshape(1, -1), svd_matrix).flatten()
+
+    # Hybrid scores
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
+
+    # Sort by similarity
     sorted_indices = hybrid_scores.argsort()[::-1]
     recommended = df.iloc[sorted_indices[1:top_n + 1]]
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
-# Handle Navigation
+# Sidebar Navigation
 page = sidebar_navigation()
 
+# Handle Navigation Pages
 if page == "Home":
     st.title("Airbnb Hybrid Recommendation System")
-    selected_neighbourhood = st.selectbox("Select a Neighbourhood Group", df['neighbourhood group'].unique())
-    selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique())
-
-    filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
-    if filtered_df.empty:
-        st.write("No listings found with your initial selection.")
-    else:
-        listing_idx = filtered_df.index[0]
-        recommended = recommend_hybrid(
-            listing_id=listing_idx,
-            tfidf_matrix=tfidf_matrix,
-            svd_model=svd,
-            df=df,
-            svd_matrix=svd_matrix,
-            alpha=0.5,
-            top_n=5
-        )
-        st.write("Recommended Listings:")
-        st.table(recommended)
+    
+    # User Input
+    user_input = st.text_input("Type a listing name, neighborhood, or feature:", placeholder="e.g., Cozy Apartment in Brooklyn")
+    
+    # Display Recommendations
+    if user_input:
+        st.write(f"Recommendations for: **{user_input}**")
+        try:
+            recommendations = recommend_hybrid(
+                input_text=user_input,
+                tfidf_matrix=tfidf_matrix,
+                svd_model=svd,
+                df=df,
+                svd_matrix=svd_matrix,
+                alpha=0.5,
+                top_n=5
+            )
+            st.table(recommendations)
+        except Exception as e:
+            st.error(f"Error generating recommendations: {e}")
 
 elif page == "Profile":
     st.title("Profile Page")
