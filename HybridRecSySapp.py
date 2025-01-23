@@ -36,6 +36,11 @@ def preprocess_data(df):
     df['host_identity_verified'] = df['host_identity_verified'].fillna('')
     df['neighbourhood group'] = df['neighbourhood group'].fillna('')
     df['review rate number'] = df['review rate number'].fillna('0').astype(str)
+    
+    # Check for image_url column
+    if 'image_url' not in df.columns:
+        df['image_url'] = ''  # Fallback if no image_url column
+
     df['combined_features'] = (
         df['NAME'] + ' ' +
         df['host_identity_verified'] + ' ' +
@@ -85,7 +90,7 @@ def recommend_hybrid(input_text, tfidf_matrix, svd_model, df, svd_matrix, alpha=
     # Sort by similarity
     sorted_indices = hybrid_scores.argsort()[::-1]
     recommended = df.iloc[sorted_indices[1:top_n + 1]]
-    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
+    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number', 'image_url']]
 
 # Sidebar Navigation
 page = sidebar_navigation()
@@ -110,7 +115,18 @@ if page == "Home":
                 alpha=0.5,
                 top_n=5
             )
-            st.table(recommendations)
+
+            # Display recommendations with images
+            for _, row in recommendations.iterrows():
+                st.markdown(f"### {row['NAME']}")
+                st.markdown(f"**Room Type:** {row['room type']} | **Neighborhood:** {row['neighbourhood group']}")
+                st.markdown(f"**Review Rate Number:** {row['review rate number']}")
+                if row['image_url']:  # Show image if URL exists
+                    st.image(row['image_url'], use_column_width=True)
+                else:
+                    st.text("No image available.")
+                st.markdown("---")
+
         except Exception as e:
             st.error(f"Error generating recommendations: {e}")
 
@@ -132,3 +148,4 @@ st.markdown("""
 💡 **Tip**: Use specific keywords like `Luxury Loft` or `Manhattan`.  
 For feedback, email us at **support@airbnb-recsys.com**.
 """)
+
