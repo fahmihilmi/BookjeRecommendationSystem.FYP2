@@ -5,26 +5,41 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
+# Add custom page config
+st.set_page_config(
+    page_title="Airbnb Recommendation System",
+    page_icon="🏠",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Sidebar Header
+st.sidebar.header("📌 Navigation")
+st.sidebar.markdown("""
+- **Home**: Learn about the recommendation system.
+- **Search**: Enter a keyword or listing name.
+- **Recommendations**: Get tailored results.
+""")
+
 # Load Dataset from GitHub
 @st.cache_data
 def load_data_from_github(file_url):
     try:
-        # Read the CSV file directly from the GitHub raw URL
         return pd.read_csv(file_url)
     except Exception as e:
         st.error(f"Error loading the dataset: {e}")
         return None
 
-# Correct GitHub raw URL for Minimized_Airbnb_Data.csv
-GITHUB_RAW_URL = 'https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv'
+# GitHub raw dataset URL
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv"
 
+# Load the dataset
 df = load_data_from_github(GITHUB_RAW_URL)
 if df is None:
-    st.stop()  # Stop the app if the data cannot be loaded
+    st.stop()
 
-# Preprocess Data
+# Preprocess the data
 def preprocess_data(df):
-    # Fill missing values
     df['NAME'] = df['NAME'].fillna('')
     df['host_identity_verified'] = df['host_identity_verified'].fillna('')
     df['neighbourhood group'] = df['neighbourhood group'].fillna('')
@@ -41,17 +56,18 @@ def preprocess_data(df):
 
 df = preprocess_data(df)
 
-# Correct Spelling
+# Correct Spelling Function
 def correct_spelling(value, correct_values):
     if isinstance(value, str) and value.strip():
         best_match = process.extractOne(value, correct_values)
         return best_match[0] if best_match[1] > 80 else value
     return None
 
+# Correct spelling for 'neighbourhood group'
 correct_values = ['Brooklyn', 'Manhattan', 'Queens', 'Staten Island', 'Bronx']
 df['neighbourhood group'] = df['neighbourhood group'].apply(lambda x: correct_spelling(x, correct_values))
 
-# Train Model
+# Train Models
 @st.cache_data
 def train_models(df):
     tfidf = TfidfVectorizer(stop_words='english')
@@ -63,54 +79,65 @@ def train_models(df):
 
 tfidf_matrix, svd, svd_matrix = train_models(df)
 
-def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
-    # Calculate content-based similarity (TF-IDF)
-    content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
+# Recommendation Function
+def recommend_hybrid(name_input, tfidf_matrix, svd_matrix, df, alpha=0.5, top_n=5):
+    # Fuzzy matching to find the closest match in the dataset
+    matched_name = process.extractOne(name_input, df['NAME'].dropna().tolist())
+    if not matched_name or matched_name[1] < 80:
+        return None, "No close match found for your input."
 
-    # Calculate collaborative similarity (SVD matrix)
-    collaborative_sim = cosine_similarity(svd_matrix[listing_id].reshape(1, -1), svd_matrix).flatten()
+    # Get the index of the matched name
+    matched_index = df[df['NAME'] == matched_name[0]].index[0]
+
+    # Content-based similarity
+    content_sim = cosine_similarity(tfidf_matrix[matched_index], tfidf_matrix).flatten()
+
+    # Collaborative similarity
+    collaborative_sim = cosine_similarity(svd_matrix[matched_index].reshape(1, -1), svd_matrix).flatten()
 
     # Compute hybrid scores
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
 
     # Sort and get top N recommendations
     sorted_indices = hybrid_scores.argsort()[::-1]
-    recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one, as it's the same listing
-    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
+    recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one (self)
+    return recommended, matched_name[0]
 
-# Streamlit App Layout
-st.title("Airbnb Hybrid Recommendation System")
+# Streamlit Home Page Layout
+st.title("🏠 Airbnb Hybrid Recommendation System")
+st.markdown("""
+Welcome to the **Airbnb Hybrid Recommendation System**! 🎉  
+Discover personalized Airbnb listings based on your preferences.
 
-# User Input
-user_input = st.text_input("Enter the name of a listing or keyword:")
+### How It Works
+- **Input**: Enter a listing name or keyword below.
+- **Recommendations**: See personalized results based on a hybrid of content-based and collaborative filtering.
 
+---
+
+### Try It Out
+👉 Type a listing name or keyword below to get started.
+""")
+
+# Input box for user search
+user_input = st.text_input("Enter a listing name or keyword:")
+
+# Process user input and show recommendations
 if user_input:
-    # Fuzzy matching to find the closest match
-    def find_closest_match(user_input, df, column="NAME"):
-        best_match = process.extractOne(user_input, df[column].dropna().tolist())
-        if best_match and best_match[1] > 80:  # Confidence threshold
-            return best_match[0]
-        return None
+    recommendations, matched_name = recommend_hybrid(
+        name_input=user_input,
+        tfidf_matrix=tfidf_matrix,
+        svd_matrix=svd_matrix,
+        df=df,
+        alpha=0.5,
+        top_n=5
+    )
 
-    matched_name = find_closest_match(user_input, df, column="NAME")
-
-    if matched_name:
-        st.write(f"Best match found: {matched_name}")
-
-        # Get the index of the matched listing
-        matched_index = df[df["NAME"] == matched_name].index[0]
-
-        # Generate recommendations
-        recommended = recommend_hybrid(
-            listing_id=matched_index,
-            tfidf_matrix=tfidf_matrix,
-            svd_model=svd,
-            df=df,
-            svd_matrix=svd_matrix,
-            alpha=0.5,
-            top_n=5
-        )
-        st.write("Recommended Listings:")
-        st.table(recommended)
+    if recommendations is None:
+        st.warning(f"⚠️ {matched_name}")
     else:
-        st.write("No matching listing found. Please try again.")
+        st.success(f"✅ Showing recommendations for: {matched_name}")
+        st.table(recommendations[['id', 'NAME', 'neighbourhood group', 'room type', 'review rate number']])
+
+# Footer
+st.markdown("---
