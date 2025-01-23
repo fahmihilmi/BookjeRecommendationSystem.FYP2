@@ -70,7 +70,12 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
 
     # Calculate collaborative filtering similarity (SVD)
     latent_features = svd_model.transform(tfidf_matrix)  # Use the full tfidf_matrix for SVD
-    collaborative_sim = cosine_similarity(latent_features[listing_id], latent_features).flatten()
+    
+    # Reshape the listing's latent features to be 2D
+    listing_latent_features = latent_features[listing_id].reshape(1, -1)
+    
+    # Now compute cosine similarity (listing_latent_features should be 2D)
+    collaborative_sim = cosine_similarity(listing_latent_features, latent_features).flatten()
 
     # Debugging: Print the shapes of both arrays
     st.write(f"content_sim shape: {content_sim.shape}")
