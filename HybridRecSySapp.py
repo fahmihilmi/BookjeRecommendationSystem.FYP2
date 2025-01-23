@@ -59,18 +59,17 @@ def train_models(df):
 
     svd = TruncatedSVD(n_components=100, random_state=42)
     svd_matrix = svd.fit_transform(tfidf_matrix)
-    return tfidf_matrix, svd
+    return tfidf_matrix, svd, svd_matrix
 
-tfidf_matrix, svd = train_models(df)
+tfidf_matrix, svd, svd_matrix = train_models(df)
 
 # Hybrid Recommendation Function
-def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5):
+def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
     # Calculate content-based similarity (TF-IDF)
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
 
-    # Ensure collaborative similarity has the same shape as content_sim
-    latent_features = svd_model.transform(tfidf_matrix[listing_id])
-    collaborative_sim = svd_model.inverse_transform(latent_features).flatten()
+    # Calculate collaborative similarity (SVD matrix)
+    collaborative_sim = cosine_similarity(svd_matrix[listing_id], svd_matrix).flatten()
 
     # Debugging: Print out shapes of both similarities to check for mismatches
     st.write(f"content_sim shape: {content_sim.shape}")
@@ -117,6 +116,7 @@ else:
         tfidf_matrix=tfidf_matrix,
         svd_model=svd,
         df=df,
+        svd_matrix=svd_matrix,
         alpha=0.5,
         top_n=5
     )
@@ -134,8 +134,10 @@ if st.button("Recommend Listings"):
             tfidf_matrix=tfidf_matrix,
             svd_model=svd,
             df=df,
+            svd_matrix=svd_matrix,
             alpha=0.5,
             top_n=5
         )
         st.write("Recommended Listings:")
         st.table(recommended)
+
