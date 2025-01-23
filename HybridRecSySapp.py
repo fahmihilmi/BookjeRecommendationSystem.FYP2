@@ -5,21 +5,14 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
 
-# Add custom page config
-st.set_page_config(
-    page_title="Airbnb Recommendation System",
-    page_icon="🏠",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# Sidebar Header
-st.sidebar.header("📌 Navigation")
-st.sidebar.markdown("""
-- **Home**: Learn about the recommendation system.
-- **Search**: Enter a keyword or listing name.
-- **Recommendations**: Get tailored results.
-""")
+# Sidebar Navigation
+def sidebar_navigation():
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio(
+        "Go to",
+        ["Home", "Profile", "Settings", "Messages"]
+    )
+    return page
 
 # Load Dataset from GitHub
 @st.cache_data
@@ -30,22 +23,19 @@ def load_data_from_github(file_url):
         st.error(f"Error loading the dataset: {e}")
         return None
 
-# GitHub raw dataset URL
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv"
+# Correct GitHub raw URL for Minimized_Airbnb_Data.csv
+GITHUB_RAW_URL = 'https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv'
 
-# Load the dataset
 df = load_data_from_github(GITHUB_RAW_URL)
 if df is None:
     st.stop()
 
-# Preprocess the data
+# Preprocess Data
 def preprocess_data(df):
     df['NAME'] = df['NAME'].fillna('')
     df['host_identity_verified'] = df['host_identity_verified'].fillna('')
     df['neighbourhood group'] = df['neighbourhood group'].fillna('')
     df['review rate number'] = df['review rate number'].fillna('0').astype(str)
-
-    # Combine features for TF-IDF
     df['combined_features'] = (
         df['NAME'] + ' ' +
         df['host_identity_verified'] + ' ' +
@@ -56,18 +46,17 @@ def preprocess_data(df):
 
 df = preprocess_data(df)
 
-# Correct Spelling Function
+# Correct Spelling
 def correct_spelling(value, correct_values):
     if isinstance(value, str) and value.strip():
         best_match = process.extractOne(value, correct_values)
         return best_match[0] if best_match[1] > 80 else value
     return None
 
-# Correct spelling for 'neighbourhood group'
 correct_values = ['Brooklyn', 'Manhattan', 'Queens', 'Staten Island', 'Bronx']
 df['neighbourhood group'] = df['neighbourhood group'].apply(lambda x: correct_spelling(x, correct_values))
 
-# Train Models
+# Train Model
 @st.cache_data
 def train_models(df):
     tfidf = TfidfVectorizer(stop_words='english')
@@ -80,64 +69,50 @@ def train_models(df):
 tfidf_matrix, svd, svd_matrix = train_models(df)
 
 # Recommendation Function
-def recommend_hybrid(name_input, tfidf_matrix, svd_matrix, df, alpha=0.5, top_n=5):
-    # Fuzzy matching to find the closest match in the dataset
-    matched_name = process.extractOne(name_input, df['NAME'].dropna().tolist())
-    if not matched_name or matched_name[1] < 80:
-        return None, "No close match found for your input."
-
-    # Get the index of the matched name
-    matched_index = df[df['NAME'] == matched_name[0]].index[0]
-
-    # Content-based similarity
-    content_sim = cosine_similarity(tfidf_matrix[matched_index], tfidf_matrix).flatten()
-
-    # Collaborative similarity
-    collaborative_sim = cosine_similarity(svd_matrix[matched_index].reshape(1, -1), svd_matrix).flatten()
-
-    # Compute hybrid scores
+def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
+    content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
+    collaborative_sim = cosine_similarity(svd_matrix[listing_id].reshape(1, -1), svd_matrix).flatten()
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
-
-    # Sort and get top N recommendations
     sorted_indices = hybrid_scores.argsort()[::-1]
-    recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one (self)
-    return recommended, matched_name[0]
+    recommended = df.iloc[sorted_indices[1:top_n + 1]]
+    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
-# Streamlit Home Page Layout
-st.title("🏠 Airbnb Hybrid Recommendation System")
-st.markdown("""
-Welcome to the **Airbnb Hybrid Recommendation System**! 🎉  
-Discover personalized Airbnb listings based on your preferences.
+# Handle Navigation
+page = sidebar_navigation()
 
-### How It Works
-- **Input**: Enter a listing name or keyword below.
-- **Recommendations**: See personalized results based on a hybrid of content-based and collaborative filtering.
+if page == "Home":
+    st.title("Airbnb Hybrid Recommendation System")
+    selected_neighbourhood = st.selectbox("Select a Neighbourhood Group", df['neighbourhood group'].unique())
+    selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique())
 
----
-
-### Try It Out
-👉 Type a listing name or keyword below to get started.
-""")
-
-# Input box for user search
-user_input = st.text_input("Enter a listing name or keyword:")
-
-# Process user input and show recommendations
-if user_input:
-    recommendations, matched_name = recommend_hybrid(
-        name_input=user_input,
-        tfidf_matrix=tfidf_matrix,
-        svd_matrix=svd_matrix,
-        df=df,
-        alpha=0.5,
-        top_n=5
-    )
-
-    if recommendations is None:
-        st.warning(f"⚠️ {matched_name}")
+    filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
+    if filtered_df.empty:
+        st.write("No listings found with your initial selection.")
     else:
-        st.success(f"✅ Showing recommendations for: {matched_name}")
-        st.table(recommendations[['id', 'NAME', 'neighbourhood group', 'room type', 'review rate number']])
+        listing_idx = filtered_df.index[0]
+        recommended = recommend_hybrid(
+            listing_id=listing_idx,
+            tfidf_matrix=tfidf_matrix,
+            svd_model=svd,
+            df=df,
+            svd_matrix=svd_matrix,
+            alpha=0.5,
+            top_n=5
+        )
+        st.write("Recommended Listings:")
+        st.table(recommended)
+
+elif page == "Profile":
+    st.title("Profile Page")
+    st.write("This is your profile page. You can display user information here.")
+
+elif page == "Settings":
+    st.title("Settings Page")
+    st.write("This is the settings page where users can customize their preferences.")
+
+elif page == "Messages":
+    st.title("Messages Page")
+    st.write("This is the messages page where users can see their messages or notifications.")
 
 # Footer
 st.markdown("---")
