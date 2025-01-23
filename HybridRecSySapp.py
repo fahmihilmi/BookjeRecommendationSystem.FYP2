@@ -65,10 +65,7 @@ tfidf_matrix, svd = train_models(df)
 
 # Hybrid Recommendation Function
 def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5):
-    # Calculate content-based similarity (TF-IDF) for the listing against all listings
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
-
-    # Calculate collaborative filtering similarity (SVD)
     latent_features = svd_model.transform(tfidf_matrix)  # Use the full tfidf_matrix for SVD
     
     # Reshape the listing's latent features to be 2D
@@ -77,10 +74,6 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     # Now compute cosine similarity (listing_latent_features should be 2D)
     collaborative_sim = cosine_similarity(listing_latent_features, latent_features).flatten()
 
-    # Debugging: Print the shapes of both arrays
-    st.write(f"content_sim shape: {content_sim.shape}")
-    st.write(f"collaborative_sim shape: {collaborative_sim.shape}")
-
     # Compute hybrid scores
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
 
@@ -88,7 +81,6 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     sorted_indices = hybrid_scores.argsort()[::-1]
     recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one, as it's the same listing
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
-
 
 # Streamlit App Layout
 st.title("Airbnb Hybrid Recommendation System")
@@ -100,6 +92,23 @@ selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique()
 # Filter and Recommend
 filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
 
+# Show recommendations immediately when the page is loaded
+if filtered_df.empty:
+    st.write("No listings found with the default selections.")
+else:
+    listing_idx = filtered_df.index[0]
+    recommended = recommend_hybrid(
+        listing_id=listing_idx,
+        tfidf_matrix=tfidf_matrix,
+        svd_model=svd,
+        df=df,
+        alpha=0.5,
+        top_n=5
+    )
+    st.write("Recommended Listings:")
+    st.table(recommended)
+
+# Button to trigger recommendations based on selected inputs
 if st.button("Recommend Listings"):
     if filtered_df.empty:
         st.write("No listings found with your selections.")
