@@ -100,7 +100,7 @@ if page == "Home":
     st.title("Airbnb Hybrid Recommendation System")
     
     # Add a dummy picture
-    st.image("https://via.placeholder.com/600x300", caption="Welcome to the Airbnb Recommendation System", use_container_width=True)
+    st.image("https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.airbnb.com%2Frooms%2F23785875&psig=AOvVaw28HmCG-WwQ304L-WvEwyse&ust=1737757675837000&source=images&cd=vfe&opi=89978449&ved=0CBcQjhxqFwoTCLjs_pP1jIsDFQAAAAAdAAAAABAE", caption="Welcome to the Airbnb Recommendation System", use_container_width=True)
     
     # User Input
     user_input = st.text_input("Type a listing name, neighborhood, or feature:", placeholder="e.g., Cozy Apartment in Brooklyn")
