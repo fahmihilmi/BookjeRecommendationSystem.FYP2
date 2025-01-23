@@ -65,12 +65,12 @@ tfidf_matrix, svd = train_models(df)
 
 # Hybrid Recommendation Function
 def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5):
-    # Calculate content-based similarity (TF-IDF)
+    # Calculate content-based similarity (TF-IDF) for the listing against all listings
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
 
     # Calculate collaborative filtering similarity (SVD)
-    latent_features = svd_model.transform(tfidf_matrix[listing_id])
-    collaborative_sim = svd_model.inverse_transform(latent_features).flatten()
+    latent_features = svd_model.transform(tfidf_matrix)  # Use the full tfidf_matrix for SVD
+    collaborative_sim = cosine_similarity(latent_features[listing_id], latent_features).flatten()
 
     # Debugging: Print the shapes of both arrays
     st.write(f"content_sim shape: {content_sim.shape}")
@@ -83,6 +83,7 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     sorted_indices = hybrid_scores.argsort()[::-1]
     recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one, as it's the same listing
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
+
 
 # Streamlit App Layout
 st.title("Airbnb Hybrid Recommendation System")
