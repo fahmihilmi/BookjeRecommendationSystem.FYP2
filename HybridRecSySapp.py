@@ -84,7 +84,6 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one, as it's the same listing
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
-
 # Streamlit App Layout
 st.title("Airbnb Hybrid Recommendation System")
 
