@@ -140,4 +140,8 @@ if user_input:
         st.table(recommendations[['id', 'NAME', 'neighbourhood group', 'room type', 'review rate number']])
 
 # Footer
-st.markdown("---
+st.markdown("---")
+st.markdown("""
+💡 **Tip**: Use specific keywords like `Luxury Loft` or `Manhattan`.  
+For feedback, email us at **support@airbnb-recsys.com**.
+""")
