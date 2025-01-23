@@ -99,6 +99,9 @@ page = sidebar_navigation()
 if page == "Home":
     st.title("Airbnb Hybrid Recommendation System")
     
+    # Add a dummy picture
+    st.image("https://via.placeholder.com/600x300", caption="Welcome to the Airbnb Recommendation System", use_column_width=True)
+    
     # User Input
     user_input = st.text_input("Type a listing name, neighborhood, or feature:", placeholder="e.g., Cozy Apartment in Brooklyn")
     
@@ -148,4 +151,3 @@ st.markdown("""
 💡 **Tip**: Use specific keywords like `Luxury Loft` or `Manhattan`.  
 For feedback, email us at **support@airbnb-recsys.com**.
 """)
-
