@@ -72,17 +72,22 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5
     latent_features = svd_model.transform(tfidf_matrix[listing_id])
     collaborative_sim = svd_model.inverse_transform(latent_features).flatten()
 
+    # Debugging: Print out shapes of both similarities to check for mismatches
+    st.write(f"content_sim shape: {content_sim.shape}")
+    st.write(f"collaborative_sim shape: {collaborative_sim.shape}")
+
     # Ensure both are 1-dimensional arrays and have the same length
     if content_sim.ndim > 1:
         content_sim = content_sim.flatten()
     if collaborative_sim.ndim > 1:
         collaborative_sim = collaborative_sim.flatten()
 
-    # Check if lengths match, truncate if necessary
+    # Check if lengths match
     if len(content_sim) != len(collaborative_sim):
         # Optionally truncate or align them in a way that makes sense for your dataset
-        collaborative_sim = collaborative_sim[:len(content_sim)]
-
+        st.write(f"Length mismatch: content_sim length = {len(content_sim)}, collaborative_sim length = {len(collaborative_sim)}")
+        collaborative_sim = collaborative_sim[:len(content_sim)]  # Adjust this if needed
+    
     # Compute hybrid scores
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
 
