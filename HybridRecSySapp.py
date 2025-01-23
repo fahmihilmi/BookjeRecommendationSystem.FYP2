@@ -16,7 +16,7 @@ def load_data_from_github(file_url):
         return None
 
 # Correct GitHub raw URL for Minimized_Airbnb_Data.csv
-GITHUB_RAW_URL = 'https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv'  # Corrected URL
+GITHUB_RAW_URL = 'https://raw.githubusercontent.com/fahmihilmi/BookjeRecommendationSystem.FYP2/main/Minimized_Airbnb_Data.csv'
 
 df = load_data_from_github(GITHUB_RAW_URL)
 if df is None:
@@ -68,24 +68,8 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
 
     # Calculate collaborative similarity (SVD matrix)
-    # Reshape the input to ensure it's 2D
     collaborative_sim = cosine_similarity(svd_matrix[listing_id].reshape(1, -1), svd_matrix).flatten()
 
-    # Debugging: Print out shapes of both similarities to check for mismatches
-    st.write(f"content_sim shape: {content_sim.shape}")
-    st.write(f"collaborative_sim shape: {collaborative_sim.shape}")
-
-    # Ensure both are 1-dimensional arrays and have the same length
-    if content_sim.ndim > 1:
-        content_sim = content_sim.flatten()
-    if collaborative_sim.ndim > 1:
-        collaborative_sim = collaborative_sim.flatten()
-
-    # Check if lengths match
-    if len(content_sim) != len(collaborative_sim):
-        st.write(f"Length mismatch: content_sim length = {len(content_sim)}, collaborative_sim length = {len(collaborative_sim)}")
-        collaborative_sim = collaborative_sim[:len(content_sim)]  # Adjust this if needed
-    
     # Compute hybrid scores
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
 
@@ -98,38 +82,27 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=
 st.title("Airbnb Hybrid Recommendation System")
 
 # User Input
-selected_neighbourhood = st.selectbox("Select a Neighbourhood Group", df['neighbourhood group'].unique())
-selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique())
+user_input = st.text_input("Enter the name of a listing or keyword:")
 
-# Filter and Recommend
-filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
+if user_input:
+    # Fuzzy matching to find the closest match
+    def find_closest_match(user_input, df, column="NAME"):
+        best_match = process.extractOne(user_input, df[column].dropna().tolist())
+        if best_match and best_match[1] > 80:  # Confidence threshold
+            return best_match[0]
+        return None
 
-# Optionally, you can load recommendations by default when the page loads
-if filtered_df.empty:
-    st.write("No listings found with your initial selection.")
-else:
-    # Load default recommendations (first row of the filtered list)
-    listing_idx = filtered_df.index[0]
-    recommended = recommend_hybrid(
-        listing_id=listing_idx,
-        tfidf_matrix=tfidf_matrix,
-        svd_model=svd,
-        df=df,
-        svd_matrix=svd_matrix,
-        alpha=0.5,
-        top_n=5
-    )
-    st.write("Recommended Listings on Page Load:")
-    st.table(recommended)
+    matched_name = find_closest_match(user_input, df, column="NAME")
 
-# User can click to get new recommendations
-if st.button("Recommend Listings"):
-    if filtered_df.empty:
-        st.write("No listings found with your selections.")
-    else:
-        listing_idx = filtered_df.index[0]
+    if matched_name:
+        st.write(f"Best match found: {matched_name}")
+
+        # Get the index of the matched listing
+        matched_index = df[df["NAME"] == matched_name].index[0]
+
+        # Generate recommendations
         recommended = recommend_hybrid(
-            listing_id=listing_idx,
+            listing_id=matched_index,
             tfidf_matrix=tfidf_matrix,
             svd_model=svd,
             df=df,
@@ -139,4 +112,5 @@ if st.button("Recommend Listings"):
         )
         st.write("Recommended Listings:")
         st.table(recommended)
-
+    else:
+        st.write("No matching listing found. Please try again.")
