@@ -63,13 +63,13 @@ def train_models(df):
 
 tfidf_matrix, svd, svd_matrix = train_models(df)
 
-# Hybrid Recommendation Function
 def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
     # Calculate content-based similarity (TF-IDF)
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
 
     # Calculate collaborative similarity (SVD matrix)
-    collaborative_sim = cosine_similarity(svd_matrix[listing_id], svd_matrix).flatten()
+    # Reshape the input to ensure it's 2D
+    collaborative_sim = cosine_similarity(svd_matrix[listing_id].reshape(1, -1), svd_matrix).flatten()
 
     # Debugging: Print out shapes of both similarities to check for mismatches
     st.write(f"content_sim shape: {content_sim.shape}")
@@ -83,7 +83,6 @@ def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, svd_matrix, alpha=
 
     # Check if lengths match
     if len(content_sim) != len(collaborative_sim):
-        # Optionally truncate or align them in a way that makes sense for your dataset
         st.write(f"Length mismatch: content_sim length = {len(content_sim)}, collaborative_sim length = {len(collaborative_sim)}")
         collaborative_sim = collaborative_sim[:len(content_sim)]  # Adjust this if needed
     
