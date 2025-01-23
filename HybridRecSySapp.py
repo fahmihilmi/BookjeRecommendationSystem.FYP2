@@ -109,4 +109,15 @@ if st.button("Recommend Listings"):
 # Optionally, you can load recommendations by default when the page loads
 if filtered_df.empty:
     st.write("No listings found with your initial selection.")
-else:
+else:    # Load default recommendations (first row of the filtered list)
+    listing_idx = filtered_df.index[0]
+    recommended = recommend_hybrid(
+        listing_id=listing_idx,
+        tfidf_matrix=tfidf_matrix,
+        svd_model=svd,
+        df=df,
+        alpha=0.5,
+        top_n=5
+    )
+    st.write("Recommended Listings on Page Load:")
+    st.table(recommended)
