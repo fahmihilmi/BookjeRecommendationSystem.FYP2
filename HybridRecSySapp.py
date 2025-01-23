@@ -65,13 +65,23 @@ tfidf_matrix, svd = train_models(df)
 
 # Hybrid Recommendation Function
 def recommend_hybrid(listing_id, tfidf_matrix, svd_model, df, alpha=0.5, top_n=5):
+    # Calculate content-based similarity (TF-IDF)
     content_sim = cosine_similarity(tfidf_matrix[listing_id], tfidf_matrix).flatten()
+
+    # Ensure collaborative similarity has the same shape as content_sim
     latent_features = svd_model.transform(tfidf_matrix[listing_id])
     collaborative_sim = svd_model.inverse_transform(latent_features).flatten()
+
+    # If dimensions mismatch, we can match the size of the collaborative similarity
+    if len(collaborative_sim) != len(content_sim):
+        collaborative_sim = collaborative_sim[:len(content_sim)]  # Or perform other resizing strategies
+
+    # Compute hybrid scores
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
 
+    # Sort and get top N recommendations
     sorted_indices = hybrid_scores.argsort()[::-1]
-    recommended = df.iloc[sorted_indices[1:top_n + 1]]
+    recommended = df.iloc[sorted_indices[1:top_n + 1]]  # Skip the first one, as it's the same listing
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
 # Streamlit App Layout
@@ -84,32 +94,11 @@ selected_room_type = st.selectbox("Select a Room Type", df['room type'].unique()
 # Filter and Recommend
 filtered_df = df[(df['neighbourhood group'] == selected_neighbourhood) & (df['room type'] == selected_room_type)]
 
-# Debugging: Check filtered DataFrame
-st.write(f"Filtered Listings: {filtered_df[['id', 'NAME', 'neighbourhood group']]}")
-
-if st.button("Recommend Listings"):
-    if filtered_df.empty:
-        st.write("No listings found for the selected neighbourhood and room type.")
-    else:
-        listing_idx = filtered_df.index[0]
-        
-        # Ensure that the filtered DataFrame is correctly applied
-        recommended = recommend_hybrid(
-            listing_id=listing_idx,
-            tfidf_matrix=tfidf_matrix,
-            svd_model=svd,
-            df=df,
-            alpha=0.5,
-            top_n=5
-        )
-        
-        st.write("Recommended Listings:")
-        st.table(recommended)
-
 # Optionally, you can load recommendations by default when the page loads
 if filtered_df.empty:
     st.write("No listings found with your initial selection.")
-else:    # Load default recommendations (first row of the filtered list)
+else:
+    # Load default recommendations (first row of the filtered list)
     listing_idx = filtered_df.index[0]
     recommended = recommend_hybrid(
         listing_id=listing_idx,
@@ -121,3 +110,20 @@ else:    # Load default recommendations (first row of the filtered list)
     )
     st.write("Recommended Listings on Page Load:")
     st.table(recommended)
+
+# User can click to get new recommendations
+if st.button("Recommend Listings"):
+    if filtered_df.empty:
+        st.write("No listings found with your selections.")
+    else:
+        listing_idx = filtered_df.index[0]
+        recommended = recommend_hybrid(
+            listing_id=listing_idx,
+            tfidf_matrix=tfidf_matrix,
+            svd_model=svd,
+            df=df,
+            alpha=0.5,
+            top_n=5
+        )
+        st.write("Recommended Listings:")
+        st.table(recommended)
