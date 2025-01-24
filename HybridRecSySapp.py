@@ -38,6 +38,10 @@ def preprocess_data(df):
     df['neighbourhood group'] = df['neighbourhood group'].fillna('')
     df['review rate number'] = df['review rate number'].fillna('0').astype(str)
     
+    # Check for image_url column
+    if 'image_url' not in df.columns:
+        df['image_url'] = ''  # Fallback if no image_url column
+
     df['combined_features'] = (
         df['NAME'] + ' ' +
         df['host_identity_verified'] + ' ' +
@@ -74,7 +78,7 @@ tfidf_matrix, svd, svd_matrix = train_models(df)
 def recommend_random_good_items(df, top_n=5):
     good_items = df[df['review rate number'].astype(float) >= 4]
     recommended = good_items.sample(n=top_n, random_state=42)
-    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
+    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number', 'image_url']]
 
 # Recommendation Function for Search Input
 def recommend_from_search(input_text, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
@@ -84,7 +88,7 @@ def recommend_from_search(input_text, tfidf_matrix, svd_model, df, svd_matrix, a
     hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
     sorted_indices = hybrid_scores.argsort()[::-1]
     recommended = df.iloc[sorted_indices[1:top_n + 1]]
-    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
+    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number', 'image_url']]
 
 # Sidebar Navigation
 page = sidebar_navigation()
@@ -99,18 +103,17 @@ if page == "Home":
     try:
         recommendations = recommend_random_good_items(df, top_n=5)
         for _, row in recommendations.iterrows():
-            st.markdown(
-                f"""
-                <div style="font-size: 14px; padding: 5px;">
-                    <strong>{row['NAME']}</strong>  
-                    <br>Room Type: {row['room type']}  
-                    Neighborhood: {row['neighbourhood group']}  
-                    <br><em>Review Rate:</em> {row['review rate number']}
-                </div>
-                <hr style="margin: 5px 0;">
-                """,
-                unsafe_allow_html=True,
-            )
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                if row['image_url']:
+                    st.image(row['image_url'], use_column_width=True)
+                else:
+                    st.image("https://via.placeholder.com/150", use_column_width=True)
+            with col2:
+                st.markdown(f"**{row['NAME']}**")
+                st.markdown(f"Room Type: {row['room type']} | Neighborhood: {row['neighbourhood group']}")
+                st.markdown(f"Review Rate: {row['review rate number']}")
+                st.markdown("---")
     except Exception as e:
         st.error(f"Error generating random recommendations: {e}")
 
@@ -132,18 +135,17 @@ if page == "Home":
                 top_n=5
             )
             for _, row in recommendations.iterrows():
-                st.markdown(
-                    f"""
-                    <div style="font-size: 14px; padding: 5px;">
-                        <strong>{row['NAME']}</strong>  
-                        <br>Room Type: {row['room type']}  
-                        Neighborhood: {row['neighbourhood group']}  
-                        <br><em>Review Rate:</em> {row['review rate number']}
-                    </div>
-                    <hr style="margin: 5px 0;">
-                    """,
-                    unsafe_allow_html=True,
-                )
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    if row['image_url']:
+                        st.image(row['image_url'], use_column_width=True)
+                    else:
+                        st.image("https://via.placeholder.com/150", use_column_width=True)
+                with col2:
+                    st.markdown(f"**{row['NAME']}**")
+                    st.markdown(f"Room Type: {row['room type']} | Neighborhood: {row['neighbourhood group']}")
+                    st.markdown(f"Review Rate: {row['review rate number']}")
+                    st.markdown("---")
         except Exception as e:
             st.error(f"Error generating recommendations: {e}")
 
