@@ -98,13 +98,10 @@ page = sidebar_navigation()
 # Handle Navigation Pages
 if page == "Home":
     st.title("Airbnb Hybrid Recommendation System")
-
-# Create an expander to upload images
-with st.expander("Upload Image"):
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg"])
-    if uploaded_file is not None:
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-
+    
+    # Add a dummy picture
+    st.image("https://via.placeholder.com/600x300", caption="Welcome to the Airbnb Recommendation System", use_container_width=True)
+    
     # User Input
     user_input = st.text_input("Type a listing name, neighborhood, or feature:", placeholder="e.g., Cozy Apartment in Brooklyn")
     
