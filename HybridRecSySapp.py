@@ -4,6 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import process
+import random
 
 # Sidebar Navigation
 def sidebar_navigation():
@@ -74,23 +75,13 @@ def train_models(df):
 tfidf_matrix, svd, svd_matrix = train_models(df)
 
 # Recommendation Function
-def recommend_hybrid(input_text, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
-    # Match the user's input to the closest listing in the dataset
-    matched_index = process.extractOne(input_text, df['combined_features'])[2]
-
-    # Content-based similarity
-    content_sim = cosine_similarity(tfidf_matrix[matched_index], tfidf_matrix).flatten()
+def recommend_random_good_items(df, top_n=5):
+    # Filter "good" listings based on review rate number (e.g., reviews >= 4)
+    good_items = df[df['review rate number'].astype(float) >= 4]
     
-    # Collaborative similarity
-    collaborative_sim = cosine_similarity(svd_matrix[matched_index].reshape(1, -1), svd_matrix).flatten()
-
-    # Hybrid scores
-    hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
-
-    # Sort by similarity
-    sorted_indices = hybrid_scores.argsort()[::-1]
-    recommended = df.iloc[sorted_indices[1:top_n + 1]]
-    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number', 'image_url']]
+    # Randomly pick 'top_n' listings from the good items
+    recommended = good_items.sample(n=top_n, random_state=42)
+    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
 # Sidebar Navigation
 page = sidebar_navigation()
@@ -102,36 +93,20 @@ if page == "Home":
     # Add a dummy picture
     st.image("https://via.placeholder.com/600x300", caption="Welcome to the Airbnb Recommendation System", use_container_width=True)
     
-    # User Input
-    user_input = st.text_input("Type a listing name, neighborhood, or feature:", placeholder="e.g., Cozy Apartment in Brooklyn")
-    
-    # Display Recommendations
-    if user_input:
-        st.write(f"Recommendations for: **{user_input}**")
-        try:
-            recommendations = recommend_hybrid(
-                input_text=user_input,
-                tfidf_matrix=tfidf_matrix,
-                svd_model=svd,
-                df=df,
-                svd_matrix=svd_matrix,
-                alpha=0.5,
-                top_n=5
-            )
+    # Recommend random "good" listings
+    st.write("Here are some top recommendations for you:")
+    try:
+        recommendations = recommend_random_good_items(df, top_n=5)
 
-            # Display recommendations with images
-            for _, row in recommendations.iterrows():
-                st.markdown(f"### {row['NAME']}")
-                st.markdown(f"**Room Type:** {row['room type']} | **Neighborhood:** {row['neighbourhood group']}")
-                st.markdown(f"**Review Rate Number:** {row['review rate number']}")
-                if row['image_url']:  # Show image if URL exists
-                    st.image(row['image_url'], use_column_width=True)
-                else:
-                    st.text("No image available.")
-                st.markdown("---")
+        # Display random "good" recommendations
+        for _, row in recommendations.iterrows():
+            st.markdown(f"### {row['NAME']}")
+            st.markdown(f"**Room Type:** {row['room type']} | **Neighborhood:** {row['neighbourhood group']}")
+            st.markdown(f"**Review Rate Number:** {row['review rate number']}")
+            st.markdown("---")
 
-        except Exception as e:
-            st.error(f"Error generating recommendations: {e}")
+    except Exception as e:
+        st.error(f"Error generating recommendations: {e}")
 
 elif page == "Profile":
     st.title("Profile Page")
