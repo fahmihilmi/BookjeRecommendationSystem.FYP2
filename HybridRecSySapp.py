@@ -91,8 +91,8 @@ page = sidebar_navigation()
 
 # Handle Navigation Pages
 if page == "Home":
-    st.title("Airbnb Hybrid Recommendation System")
-    st.image("https://via.placeholder.com/600x300", caption="Welcome to the Airbnb Recommendation System", use_container_width=True)
+    st.title("Bookjer Hybrid Recommendation System")
+    st.image("https://via.placeholder.com/600x300", caption="Welcome to the Bookjer Recommendation System", use_container_width=True)
     
     # Display random good listings
     st.write("### Top Recommendations for You:")
@@ -163,5 +163,5 @@ elif page == "Messages":
 st.markdown("---")
 st.markdown("""
 💡 **Tip**: Use specific keywords like `Luxury Loft` or `Manhattan`.  
-For feedback, email us at **support@airbnb-recsys.com**.
+For feedback, email us at **support@Bookjer-recsys.com**.
 """)
