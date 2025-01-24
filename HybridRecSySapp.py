@@ -74,13 +74,32 @@ def train_models(df):
 
 tfidf_matrix, svd, svd_matrix = train_models(df)
 
-# Recommendation Function
+# Recommendation Function for Random "Good" Items
 def recommend_random_good_items(df, top_n=5):
     # Filter "good" listings based on review rate number (e.g., reviews >= 4)
     good_items = df[df['review rate number'].astype(float) >= 4]
     
     # Randomly pick 'top_n' listings from the good items
     recommended = good_items.sample(n=top_n, random_state=42)
+    return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
+
+# Recommendation Function based on Search Input
+def recommend_from_search(input_text, tfidf_matrix, svd_model, df, svd_matrix, alpha=0.5, top_n=5):
+    # Match the user's input to the closest listing in the dataset
+    matched_index = process.extractOne(input_text, df['combined_features'])[2]
+
+    # Content-based similarity
+    content_sim = cosine_similarity(tfidf_matrix[matched_index], tfidf_matrix).flatten()
+    
+    # Collaborative similarity
+    collaborative_sim = cosine_similarity(svd_matrix[matched_index].reshape(1, -1), svd_matrix).flatten()
+
+    # Hybrid scores
+    hybrid_scores = alpha * content_sim + (1 - alpha) * collaborative_sim
+
+    # Sort by similarity
+    sorted_indices = hybrid_scores.argsort()[::-1]
+    recommended = df.iloc[sorted_indices[1:top_n + 1]]
     return recommended[['id', 'NAME', 'room type', 'neighbourhood group', 'review rate number']]
 
 # Sidebar Navigation
@@ -93,20 +112,48 @@ if page == "Home":
     # Add a dummy picture
     st.image("https://via.placeholder.com/600x300", caption="Welcome to the Airbnb Recommendation System", use_container_width=True)
     
-    # Recommend random "good" listings
-    st.write("Here are some top recommendations for you:")
-    try:
-        recommendations = recommend_random_good_items(df, top_n=5)
+    # User Input for Search
+    user_input = st.text_input("Search for a listing name, neighborhood, or feature:", placeholder="e.g., Cozy Apartment in Brooklyn")
+    
+    # If user input exists, show recommendations based on search input
+    if user_input:
+        st.write(f"Recommendations for: **{user_input}**")
+        try:
+            recommendations = recommend_from_search(
+                input_text=user_input,
+                tfidf_matrix=tfidf_matrix,
+                svd_model=svd,
+                df=df,
+                svd_matrix=svd_matrix,
+                alpha=0.5,
+                top_n=5
+            )
 
-        # Display random "good" recommendations
-        for _, row in recommendations.iterrows():
-            st.markdown(f"### {row['NAME']}")
-            st.markdown(f"**Room Type:** {row['room type']} | **Neighborhood:** {row['neighbourhood group']}")
-            st.markdown(f"**Review Rate Number:** {row['review rate number']}")
-            st.markdown("---")
+            # Display recommendations for search input
+            for _, row in recommendations.iterrows():
+                st.markdown(f"### {row['NAME']}")
+                st.markdown(f"**Room Type:** {row['room type']} | **Neighborhood:** {row['neighbourhood group']}")
+                st.markdown(f"**Review Rate Number:** {row['review rate number']}")
+                st.markdown("---")
+        
+        except Exception as e:
+            st.error(f"Error generating recommendations: {e}")
+    
+    # Show random good listings if no search input
+    else:
+        st.write("Here are some top recommendations for you:")
+        try:
+            recommendations = recommend_random_good_items(df, top_n=5)
 
-    except Exception as e:
-        st.error(f"Error generating recommendations: {e}")
+            # Display random "good" recommendations
+            for _, row in recommendations.iterrows():
+                st.markdown(f"### {row['NAME']}")
+                st.markdown(f"**Room Type:** {row['room type']} | **Neighborhood:** {row['neighbourhood group']}")
+                st.markdown(f"**Review Rate Number:** {row['review rate number']}")
+                st.markdown("---")
+
+        except Exception as e:
+            st.error(f"Error generating random recommendations: {e}")
 
 elif page == "Profile":
     st.title("Profile Page")
