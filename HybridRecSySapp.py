@@ -9,7 +9,6 @@ from fuzzywuzzy import process
 def sidebar_navigation():
     st.sidebar.title("Navigation")
     page = st.sidebar.radio(
-        "Go to",
         ["Home", "Profile", "Settings", "Messages"]
     )
     return page
@@ -36,17 +35,7 @@ def preprocess_data(df):
     df['host_identity_verified'] = df['host_identity_verified'].fillna('')
     df['neighbourhood group'] = df['neighbourhood group'].fillna('')
     df['review rate number'] = df['review rate number'].fillna('0').astype(str)
-    
-    # Check for image_url column
-    if 'image_url' not in df.columns:
-        df['image_url'] = ''  # Fallback if no image_url column
 
-    df['combined_features'] = (
-        df['NAME'] + ' ' +
-        df['host_identity_verified'] + ' ' +
-        df['neighbourhood group'] + ' ' +
-        df['review rate number']
-    )
     return df
 
 df = preprocess_data(df)
