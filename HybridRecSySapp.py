@@ -106,9 +106,9 @@ if page == "Home":
             col1, col2 = st.columns([1, 3])
             with col1:
                 if row['image_url']:
-                    st.image(row['image_url'], use_column_width=True)
+                    st.image(row['image_url'], use_container_width=True)
                 else:
-                    st.image("https://via.placeholder.com/150", use_column_width=True)
+                    st.image("https://via.placeholder.com/150", use_container_width=True)
             with col2:
                 st.markdown(f"**{row['NAME']}**")
                 st.markdown(f"Room Type: {row['room type']} | Neighborhood: {row['neighbourhood group']}")
